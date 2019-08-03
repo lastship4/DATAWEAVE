@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.elasticsearch.model.User;
 /**
- * This class is to demo how ElasticsearchTemplate can be used to Save/Retrieve
+ * @Sadique
  */
 
 @RestController
