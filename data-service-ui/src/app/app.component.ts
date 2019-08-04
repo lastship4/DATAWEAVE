@@ -8,7 +8,7 @@ import { OnInit } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  title = 'weather';
+  title = 'data-service-ui';
   report = new Object;
   input_value = '';
   product = null;
