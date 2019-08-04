@@ -23,38 +23,43 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
-import org.json.JSONException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.elasticsearch.model.User;
+import com.example.elasticsearch.model.Product;
 /**
  * @Sadique
  */
 
 @RestController
-@RequestMapping("/rest/users")
-public class UserController {
+@RequestMapping("/data")
+@CrossOrigin(value="*")
+public class ProductController {
 
     @Autowired
     Client client;
-    @PostMapping("/create")
-    public String create(@RequestBody User user) throws IOException {
+    //@PostMapping("/create")
+    public String create(/*@RequestBody*/ Product product ) throws IOException {
         
-        IndexResponse response = client.prepareIndex("users", "employee", user.getUserId())
+        IndexResponse response = client.prepareIndex("dataweave_final", "product")
                 .setSource(jsonBuilder()
                         .startObject()
-                        .field("name", user.getName())
-                        .field("userSettings", user.getUserSettings())
+                        .field("color_code", product.getColorCode())
+                        .field("title", product.getTitle())
+                        .field("thumbnail", product.getThumbnail())
+                        .field("description", product.getDescription())
+                        .field("brand", product.getBrand())
+                        .field("mrp", product.getMrp())
+                        .field("country", product.getCountry())
+                        .field("size", product.getSize())
                         .endObject()
                 )
                 .get();
@@ -65,7 +70,7 @@ public class UserController {
 
     @GetMapping("/view/{id}")
     public Map<String, Object> view(@PathVariable final String id) {
-        GetResponse getResponse = client.prepareGet("users", "employee", id).get();
+        GetResponse getResponse = client.prepareGet("dataweave_final","", id).get();
         System.out.println(getResponse.getSource());
 
 
@@ -74,10 +79,9 @@ public class UserController {
     @GetMapping("/view/name/{field}")
     public Map<String, Object> searchByName(@PathVariable final String field) {
         Map<String,Object> map = null;
-        SearchResponse response = client.prepareSearch("users")
-                                .setTypes("employee")
+        SearchResponse response = client.prepareSearch("dataweave_final")
                                 .setSearchType(SearchType.QUERY_AND_FETCH)
-                                .setQuery(QueryBuilders.matchQuery("name", field))
+                                .setQuery(QueryBuilders.matchQuery("_id", field))
                                 .get()
                                 ;
         List<SearchHit> searchHits = Arrays.asList(response.getHits().getHits());
@@ -87,17 +91,31 @@ public class UserController {
     }
     
     @GetMapping("/view/fulltext")
-    public List<SearchHit> fullTextSearch(@PathParam(value = "text") final String text) {
+    public String fullTextSearch(@PathParam(value = "text") final String text) {
         Map<String,Object> map = null;
-        SearchResponse response = client.prepareSearch("users")
+        SearchResponse response = client.prepareSearch("dataweave_final")
                                 //.setTypes("employee")
                                 .setSearchType(SearchType.QUERY_AND_FETCH)
-                                .setQuery(QueryBuilders.moreLikeThisQuery(new String[]{text}))
+                                .setQuery(QueryBuilders.multiMatchQuery(text, new String[] {"title","color_code","thumbnails","size","mrp","brand","country","description"}))
                                 .get()
                                 ;
         List<SearchHit> searchHits = Arrays.asList(response.getHits().getHits());
         //map =   searchHits.get(0).getSource();
-        return searchHits;
+        JSONParser jsonParser = new JSONParser();
+        JSONArray array = new JSONArray();
+        for(SearchHit sh : searchHits) {
+        	String json = sh.getSourceAsString();
+        	try {
+				JSONObject obj = (JSONObject) jsonParser.parse(json);
+				obj.put("id",sh.getId());
+				array.add(obj);
+				
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
+        return array.toJSONString();
 
     }
     
@@ -149,7 +167,7 @@ public class UserController {
     public String extractMeaningfullData() {
     	FileInputStream fim;
     	Scanner sc = null;
-    	JSONArray arr = new JSONArray();
+    	//JSONArray arr = new JSONArray();
 		try {
 			fim = new FileInputStream("20190802_20190801_1_bloomingdales-us_product.json");
 		
@@ -158,7 +176,7 @@ public class UserController {
     	while(sc.hasNext())
     	{
     	JSONObject obj = readLine(sc.nextLine());
-    	arr.add(obj);
+    	//arr.add(obj);
     	}
     	
 		} catch (FileNotFoundException e) {
@@ -169,7 +187,7 @@ public class UserController {
 		}
 		
 		//System.out.println(arr.toJSONString());
-		System.out.println("size of record = " + arr.size());
+		//System.out.println("size of record = " + arr.size());
 		
 		return null;
     }
@@ -200,9 +218,10 @@ public class UserController {
 			jsonObject.put("country", country);
 			jsonObject.put("size", size);
 			
+			Product p = new Product(color, title, thumbnail, description, brand, mrp, country, size);
+			create(p);
 			
-			
-		} catch (ParseException e) {
+		} catch (ParseException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
